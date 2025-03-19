@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice-Enabled Accessibility Assistant</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        #videoContainer {
+            position: relative;
+            margin: 20px auto;
+            max-width: 640px;
+        }
+        #video {
+            width: 100%;
+            max-width: 640px;
+            border: 2px solid #333;
+        }
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            max-width: 640px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #status, #results {
+            margin: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        #commandsList {
+            text-align: left;
+            margin: 20px;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Voice-Enabled Accessibility Assistant</h1>
+        <div id="status">Loading...</div>
+        <div>
+            <button id="startButton" onclick="startAssistant()" disabled>Start Assistant</button>
+            <button id="stopButton" onclick="stopAssistant()" disabled>Stop Assistant</button>
+        </div>
+        <div id="commandsList">
+            <h3>Voice Commands:</h3>
+            <ul>
+                <li>"Start" - Start the assistant</li>
+                <li>"Stop" - Stop the assistant</li>
+                <li>"What do you see" - Describe detected objects</li>
+                <li>"Read text" - Read any detected text</li>
+                <li>"Help" - List available commands</li>
+            </ul>
+        </div>
+        <div id="videoContainer">
+            <video id="video" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+        </div>
+        <div id="results">No detections yet</div>
+    </div>
+
+    <script>
+        // Global variables
+        let model = null;
+        let isRunning = false;
+        let video = document.getElementById('video');
+        let canvas = document.getElementById('canvas');
+        let ctx = canvas.getContext('2d');
+        let status = document.getElementById('status');
+        let results = document.getElementById('results');
+        let startButton = document.getElementById('startButton');
+        let stopButton = document.getElementById('stopButton');
+        let recognition = null;
+        let synth = window.speechSynthesis;
+        let lastSpokenTime = 0;
+        const SPEAK_COOLDOWN = 2000; // 2 seconds between speeches
+
+        // Initialize speech recognition
+        function initSpeechRecognition() {
+            if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+                recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                recognition.continuous = true;
+                recognition.interimResults = false;
+                recognition.lang = 'en-US';
+
+                recognition.onresult = handleVoiceCommand;
+                recognition.onend = () => {
+                    if (isRunning) {
+                        recognition.start();
+                    }
+                };
+                recognition.onerror = (event) => {
+                    console.error('Speech recognition error:', event.error);
+                    speak('Speech recognition error. Please try again.');
+                };
+            } else {
+                speak('Speech recognition is not supported in this browser.');
+            }
+        }
+
+        // Handle voice commands
+        function handleVoiceCommand(event) {
+            const command = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+            console.log('Voice command received:', command);
+
+            if (command.includes('start')) {
+                startAssistant();
+            } else if (command.includes('stop')) {
+                stopAssistant();
+            } else if (command.includes('what do you see')) {
+                describeScene();
+            } else if (command.includes('read text')) {
+                performOCR();
+            } else if (command.includes('help')) {
+                listCommands();
+            }
+        }
+
+        // Text-to-speech function with cooldown
+        function speak(text) {
+            const now = Date.now();
+            if (now - lastSpokenTime >= SPEAK_COOLDOWN) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                synth.speak(utterance);
+                lastSpokenTime = now;
+                console.log('Speaking:', text);
+            }
+        }
+
+        // List available commands
+        function listCommands() {
+            const commands = [
+                'Available commands:',
+                'Say "Start" to begin detection',
+                'Say "Stop" to end detection',
+                'Say "What do you see" for object detection',
+                'Say "Read text" for text recognition',
+                'Say "Help" to hear these commands again'
+            ].join('. ');
+            speak(commands);
+        }
+
+        // Initialize the application
+        async function init() {
+            try {
+                status.textContent = 'Loading TensorFlow model...';
+                speak('Loading assistant. Please wait.');
+                
+                // Load COCO-SSD model
+                model = await cocoSsd.load();
+                
+                // Initialize speech recognition
+                initSpeechRecognition();
+                
+                status.textContent = 'Assistant ready. Say "Start" or press the Start button.';
+                startButton.disabled = false;
+                speak('Assistant ready. Say "Help" for available commands.');
+                
+            } catch (error) {
+                status.innerHTML = `<span class="error">Error initializing: ${error.message}</span>`;
+                speak('Error initializing assistant. Please refresh the page.');
+                console.error('Initialization error:', error);
+            }
+        }
+
+        // Start the assistant
+        async function startAssistant() {
+            try {
+                if (!model) {
+                    throw new Error('Model not loaded yet. Please wait.');
+                }
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'environment',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    }
+                });
+
+                video.srcObject = stream;
+                await new Promise(resolve => video.onloadedmetadata = resolve);
+                
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                isRunning = true;
+                startButton.disabled = true;
+                stopButton.disabled = false;
+                status.textContent = 'Assistant is running';
+                speak('Assistant started. Say "What do you see" to detect objects.');
+
+                if (recognition) {
+                    recognition.start();
+                }
+
+                detectFrame();
+
+            } catch (error) {
+                status.innerHTML = `<span class="error">Error starting assistant: ${error.message}</span>`;
+                speak('Error starting assistant. Please check camera permissions.');
+                console.error('Start error:', error);
+            }
+        }
+
+        // Stop the assistant
+        function stopAssistant() {
+            isRunning = false;
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+            if (recognition) {
+                recognition.stop();
+            }
+            startButton.disabled = false;
+            stopButton.disabled = true;
+            status.textContent = 'Assistant stopped';
+            results.textContent = 'No detections';
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            speak('Assistant stopped. Say "Start" to begin again.');
+        }
+
+        // Describe the current scene
+        function describeScene() {
+            if (!isRunning) {
+                speak('Assistant is not running. Say "Start" to begin.');
+                return;
+            }
+            performDetection(true); // true flag to force speaking results
+        }
+
+        // Main detection loop
+        async function detectFrame() {
+            if (!isRunning) return;
+            await performDetection(false);
+            requestAnimationFrame(detectFrame);
+        }
+
+        // Perform object detection
+        async function performDetection(speakResults) {
+            try {
+                const predictions = await model.detect(video);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                let detectedObjects = [];
+                
+                predictions.forEach(prediction => {
+                    if (prediction.score > 0.66) {
+                        ctx.strokeStyle = '#00ff00';
+                        ctx.lineWidth = 4;
+                        ctx.strokeRect(...prediction.bbox);
+
+                        ctx.fillStyle = '#00ff00';
+                        ctx.font = '16px Arial';
+                        ctx.fillText(
+                            `${prediction.class} ${(prediction.score * 100).toFixed(0)}%`,
+                            prediction.bbox[0],
+                            prediction.bbox[1] > 10 ? prediction.bbox[1] - 5 : 10
+                        );
+
+                        detectedObjects.push(prediction.class);
+                    }
+                });
+
+                if (detectedObjects.length > 0) {
+                    const text = 'I see: ' + detectedObjects.join(', ');
+                    results.textContent = text;
+                    if (speakResults) {
+                        speak(text);
+                    }
+                } else if (speakResults) {
+                    speak('No objects detected');
+                }
+
+            } catch (error) {
+                console.error('Detection error:', error);
+                if (speakResults) {
+                    speak('Error during detection. Please try again.');
+                }
+            }
+        }
+
+        // Perform OCR on current frame
+        async function performOCR() {
+            try {
+                speak('Scanning for text...');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                const result = await Tesseract.recognize(canvas, 'eng', {
+                    logger: m => console.log(m)
+                });
+
+                const text = result.data.text.trim();
+                if (text) {
+                    speak('Found text: ' + text);
+                    results.textContent = 'Text: ' + text;
+                } else {
+                    speak('No text detected');
+                }
+            } catch (error) {
+                console.error('OCR error:', error);
+                speak('Error reading text. Please try again.');
+            }
+        }
+
+        // Initialize on page load
+        window.onload = init;
+    </script>
+</body>
+</html>

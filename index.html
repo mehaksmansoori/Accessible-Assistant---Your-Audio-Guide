@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accessible Assistant - Your Audio Guide</title>
+    <style>
+        /* Base styles */
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --light-bg: #f9f9f9;
+            --dark-bg: #333;
+            --focus-color: yellow;
+        }
+        .Footer{
+            color: #ddd;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: var(--light-bg);
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        body.high-contrast-mode {
+            background-color: #000;
+            color: #fff;
+        }
+        body.high-contrast-mode .feature-card,
+        body.high-contrast-mode .command-list,
+        body.high-contrast-mode #feedback,
+        body.high-contrast-mode #navigation-results,
+        body.high-contrast-mode #web-content-output {
+            background-color: #222;
+            color: #fff;
+            border-color: #555;
+        }
+        
+        /* High contrast elements */
+        .high-contrast  {
+            background-color: var(--secondary-color);
+            color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .high-contrast h1, p{
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center; /* Ensures text is centered */
+            width: 100%;
+        }
+        /* Large, clear buttons */
+        button {
+            font-size: 1.2rem;
+            padding: 15px 25px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--primary-color);
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover, button:focus {
+            background-color: #2980b9;
+            outline: 3px solid var(--focus-color);
+        }
+        
+        body.high-contrast-mode button {
+            background-color: #555;
+            color: #fff;
+            border: 2px solid #888;
+        }
+        
+        /* Focus states for accessibility */
+        a:focus, button:focus, input:focus {
+            outline: 3px solid var(--focus-color);
+        }
+        
+        h1, h2, h3 {
+            color: var(--secondary-color);
+            margin-top: 2rem;
+        }
+        
+        body.high-contrast-mode h1,
+        body.high-contrast-mode h2,
+        body.high-contrast-mode h3 {
+            color: #fff;
+        }
+        
+        /* Skip link for keyboard navigation */
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #000;
+            color: white;
+            padding: 8px;
+            z-index: 100;
+        }
+        
+        .skip-link:focus {
+            top: 0;
+        }
+        
+        /* Voice command feedback area */
+        #feedback {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            min-height: 50px;
+            background-color: white;
+        }
+        
+        /* Command list styling */
+        .command-list {
+            background-color: #eaf7ff;
+            border-left: 5px solid var(--primary-color);
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .feature-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background-color: white;
+        }
+        .feature-card h1,p{
+            color: #000;
+        }
+        /* Camera feature styles */
+        #camera-feature {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        #camera-view {
+            width: 100%;
+            max-width: 640px;
+            border: 3px solid var(--primary-color);
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+        
+        #detection-results {
+            padding: 15px;
+            background-color: #eaf7ff;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        /* Document reader styles */
+        #document-reader {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        #document-preview {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        #doc-text-output {
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        /* Smart Navigation styles */
+        #smart-navigation {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        #navigation-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        #navigation-results {
+            padding: 15px;
+            background-color: #eaf7ff;
+            border-radius: 5px;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        /* Web Accessibility styles */
+        #web-accessibility {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        #web-url-input {
+            width: 100%;
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        #web-content-output {
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <a href="#main" class="skip-link">Skip to main content</a>
+    
+    <header class="high-contrast">
+        <h1>Accessible Assistant - Your Audio Guide</h1>
+        <p class="header" style="color: #ffffff;" >A voice-controlled platform designed for visually impaired users</p>
+    </header>
+
+    <main id="main">
+        <div id="voice-control" style="display: flex;align-items: center;">
+            <h2>Voice Command Interface</h2>
+            <button id="start-voice">Start Voice Control</button>
+            <button id="stop-voice">Stop Voice Control</button>
+            <div id="feedback" aria-live="polite">Feedback will appear here...</div>
+        </div>
+
+        <section class="command-list">
+            <h2>Available Voice Commands</h2>
+            <ul>
+                <li>"Navigate to [section]" - Go to Home, Features, Guide, or Contact</li>
+                <li>"Open camera" - Activate object recognition feature</li>
+                <li>"Open document reader" - Activate document reading feature</li>
+                <li>"Open navigation" - Activate smart navigation feature</li>
+                <li>"Open web reader" - Activate web accessibility feature</li>
+                <li>"Read page" - Read the current page content</li>
+                <li>"Stop reading" - Stop the text-to-speech</li>
+                <li>"Help" - List available commands</li>
+                <li>"Increase text size" - Make text larger</li>
+                <li>"Decrease text size" - Make text smaller</li>
+                <li>"High contrast" - Toggle high contrast mode</li>
+            </ul>
+        </section>
+
+        <section id="features">
+            <h2>Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3> Object Recognition</h3>
+                    <p>Use your smartphone camera to identify objects, read text on signage, and navigate public spaces.</p>
+                    <button id="open-camera"><a href="object-detection.html" style=" color: #ffffff; text-decoration: none;">Open Camera Feature</a></button>
+                </div>
+                <div class="feature-card">
+                    <h3>Document Reading</h3>
+                    <p>Convert printed and handwritten documents into accessible, audible content.</p>
+                    <button id="open-doc-reader">Open Document Reader</button>
+                </div>
+                <div class="feature-card">
+                    <h3>Smart Navigation</h3>
+                    <p>Get step-by-step directions through voice commands for campus exploration or daily travel.</p>
+                    <button id="open-navigation">Open Navigation</button>
+                </div>
+                <div class="feature-card">
+                    <h3>Web Accessibility</h3>
+                    <p>Extract text from images and summarize web resources for easier consumption.</p>
+                    <button id="open-web-reader">Open Web Reader</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Camera Feature Section -->
+        <section id="camera-feature">
+            <h2>Object Recognition</h2>
+            <p>Point your camera at objects, signage, or text to get audio descriptions.</p>
+            
+            <video id="camera-view" autoplay playsinline></video>
+            <div id="detection-results" aria-live="polite">Point camera at an object to begin...</div>
+            
+            <button id="capture-image">Capture Image</button>
+            <button id="close-camera">Close Camera</button>
+        </section>
+
+        <!-- Document Reader Feature Section -->
+        <section id="document-reader">
+            <h2>Document Reader</h2>
+            <p>Upload a document to have its contents read aloud.</p>
+            
+            <input type="file" id="document-input" accept="image/*" aria-label="Select a document to scan">
+            <img id="document-preview" alt="Document preview area" style="display: none;">
+            <div id="doc-text-output" aria-live="polite">Upload a document to begin...</div>
+            
+            <button id="read-document">Read Document</button>
+            <button id="close-doc-reader">Close Document Reader</button>
+        </section>
+
+        <!-- Smart Navigation Feature Section -->
+        <section id="smart-navigation">
+            <h2>Smart Navigation</h2>
+            <p>Ask for directions or location information using natural language.</p>
+            
+            <input type="text" id="navigation-input" placeholder="Ask for directions (e.g., 'How do I get to the library?')" aria-label="Navigation query input">
+            <div id="navigation-results" aria-live="polite">Enter a destination or ask for directions...</div>
+            
+            <button id="get-directions">Get Directions</button>
+            <button id="close-navigation">Close Navigation</button>
+        </section>
+
+        <!-- Web Accessibility Feature Section -->
+        <section id="web-accessibility">
+            <h2>Web Content Reader</h2>
+            <p>Enter a URL to have its content extracted and read aloud.</p>
+            
+            <input type="url" id="web-url-input" placeholder="Enter website URL (e.g., news.example.com)" aria-label="Website URL input">
+            <div id="web-content-output" aria-live="polite">Enter a URL to extract content...</div>
+            
+            <button id="extract-content">Extract Content</button>
+            <button id="close-web-reader">Close Web Reader</button>
+        </section>
+
+        <section id="guide">
+            <h2>Getting Started Guide</h2>
+            <ol>
+                <li>Press the "Start Voice Control" button or say "Start listening"</li>
+                <li>Use voice commands to navigate the website and access features</li>
+                <li>Say "Help" at any time to hear available commands</li>
+                <li>Try opening features by saying "Open camera", "Open navigation", etc.</li>
+                <li>Upload documents or enter text in the appropriate features</li>
+                <li>Customize your experience using contrast and text size commands</li>
+            </ol>
+        </section>
+
+        <section id="contact">
+            <h2>Contact Support</h2>
+            <p>Need assistance? Contact our dedicated support team:</p>
+            <button id="call-support">Call Support (Voice Command: "Call support")</button>
+            <button id="send-email" style="align-items: flex-end;">Email Support (Voice Command: "Send email")</button>
+        </section>
+    </main>
+
+    <footer class="high-contrast">
+        <p class="Footer">© 2025 Accessible Assistant. All rights reserved.</p>
+    </footer>
+
+    <script>
+        
+        // Initialize speech recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        
+        // Text-to-speech setup
+        const speechSynthesis = window.speechSynthesis;
+        let isListening = false;
+        let currentUtterance = null;
+        
+        // DOM Elements
+        const feedbackArea = document.getElementById('feedback');
+        const startButton = document.getElementById('start-voice');
+        const stopButton = document.getElementById('stop-voice');
+        const cameraFeature = document.getElementById('camera-feature');
+        const documentReader = document.getElementById('document-reader');
+        const smartNavigation = document.getElementById('smart-navigation');
+        const webAccessibility = document.getElementById('web-accessibility');
+        
+        // Voice command handler
+        recognition.onresult = (event) => {
+            const command = event.results[event.results.length - 1][0].transcript.toLowerCase().trim();
+            processCommand(command);
+        };
+        
+        // Process voice commands
+        function processCommand(command) {
+            feedbackArea.textContent = `Command received: "${command}"`;
+            
+            // Navigation commands
+            if (command.includes('navigate to home') || command.includes('go to home')) {
+                window.location.href = '#main';
+                speak('Navigating to home section');
+            } 
+            else if (command.includes('navigate to features') || command.includes('go to features')) {
+                document.getElementById('features').scrollIntoView();
+                speak('Navigating to features section');
+            }
+            else if (command.includes('navigate to guide') || command.includes('go to guide')) {
+                document.getElementById('guide').scrollIntoView();
+                speak('Navigating to guide section');
+            }
+            else if (command.includes('navigate to contact') || command.includes('go to contact')) {
+                document.getElementById('contact').scrollIntoView();
+                speak('Navigating to contact section');
+            }
+            
+            // Feature commands
+            else if (command.includes('open camera')) {
+                openCameraFeature();
+            }
+            else if (command.includes('open document reader')) {
+                openDocumentReader();
+            }
+            else if (command.includes('open navigation')) {
+                openSmartNavigation();
+            }
+            else if (command.includes('open web reader')) {
+                openWebAccessibility();
+            }
+            
+            // Reading commands
+            else if (command.includes('read page')) {
+                const mainContent = document.getElementById('main').textContent;
+                speak(mainContent);
+            }
+            else if (command.includes('stop reading')) {
+                stopSpeaking();
+                speak('Reading stopped');
+            }
+            
+            // Help command
+            else if (command.includes('help')) {
+                const helpText = document.querySelector('.command-list').textContent;
+                speak(helpText);
+            }
+            
+            // Text size commands
+            else if (command.includes('increase text size') || command.includes('larger text')) {
+                const currentSize = parseInt(window.getComputedStyle(document.body).fontSize);
+                document.body.style.fontSize = (currentSize + 2) + 'px';
+                speak('Text size increased');
+            }
+            else if (command.includes('decrease text size') || command.includes('smaller text')) {
+                const currentSize = parseInt(window.getComputedStyle(document.body).fontSize);
+                document.body.style.fontSize = (currentSize - 2) + 'px';
+                speak('Text size decreased');
+            }
+            
+            // Contrast command
+            else if (command.includes('high contrast') || command.includes('toggle contrast')) {
+                document.body.classList.toggle('high-contrast-mode');
+                speak('High contrast mode toggled');
+            }
+            
+            // Support commands
+            else if (command.includes('call support')) {
+                speak('Initiating support call. Please wait while we connect you.');
+                setTimeout(() => speak('This is a simulation. In a real implementation, this would connect to a support line.'), 2000);
+            }
+            else if (command.includes('send email')) {
+                speak('Opening email form. You can dictate your message after the beep.');
+                setTimeout(() => speak('This is a simulation. In a real implementation, this would open an email composition form.'), 2000);
+            }
+            
+            // Close features
+            else if (command.includes('close camera')) {
+                closeCameraFeature();
+            }
+            else if (command.includes('close document reader')) {
+                closeDocumentReader();
+            }
+            else if (command.includes('close navigation')) {
+                closeSmartNavigation();
+            }
+            else if (command.includes('close web reader')) {
+                closeWebAccessibility();
+            }
+            else {
+                speak('Command not recognized. Say "help" for a list of available commands.');
+            }
+        }
+        
+        // Text-to-speech function
+        function speak(text) {
+            stopSpeaking();
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            speechSynthesis.speak(currentUtterance);
+        }
+        
+        function stopSpeaking() {
+            if (speechSynthesis.speaking) {
+                speechSynthesis.cancel();
+            }
+        }
+        
+        // Button event listeners for voice control
+        startButton.addEventListener('click', () => {
+            try {
+                recognition.start();
+                isListening = true;
+                feedbackArea.textContent = 'Voice control activated. Try saying "Help" for available commands.';
+                speak('Voice control activated. Say "Help" for available commands.');
+            } catch (error) {
+                console.error('Error starting recognition:', error);
+                feedbackArea.textContent = 'Could not start voice recognition. Please try again.';
+            }
+        });
+        
+        stopButton.addEventListener('click', () => {
+            recognition.stop();
+            isListening = false;
+            feedbackArea.textContent = 'Voice control deactivated.';
+            speak('Voice control deactivated.');
+        });
+        
+        // Error handling for speech recognition
+        recognition.onerror = (event) => {
+            console.error('Speech recognition error', event.error);
+            feedbackArea.textContent =` Error: ${event.error}. Please try again.`;
+        };
+        
+        // Camera Feature Functions
+        function openCameraFeature() {
+            closeAllFeatures();
+            cameraFeature.style.display = 'block';
+            document.getElementById('features').scrollIntoView();
+            speak('Camera feature activated. You can capture images for object and text recognition.');
+            
+            // Simulate camera activation
+            const cameraView = document.getElementById('camera-view');
+            navigator.mediaDevices.getUserMedia({ video: true })
+                .then(stream => {
+                    cameraView.srcObject = stream;
+                })
+                .catch(err => {
+                    speak('Could not access camera. This may be a simulation or permission issue.');
+                    document.getElementById('detection-results').textContent = 'Camera simulation mode active. Click "Capture Image" to simulate detection.';
+                });
+        }
+        
+        function closeCameraFeature() {
+            const cameraView = document.getElementById('camera-view');
+            if (cameraView.srcObject) {
+                cameraView.srcObject.getTracks().forEach(track => track.stop());
+            }
+            cameraFeature.style.display = 'none';
+            speak('Camera feature deactivated.');
+        }
+        
+        // Document Reader Functions
+        function openDocumentReader() {
+            closeAllFeatures();
+            documentReader.style.display = 'block';
+            document.getElementById('features').scrollIntoView();
+            speak('Document reader activated. Please upload an image of a document to read.');
+        }
+        
+        function closeDocumentReader() {
+            documentReader.style.display = 'none';
+            speak('Document reader deactivated.');
+        }
+
+        // Smart Navigation Functions
+        function openSmartNavigation() {
+            closeAllFeatures();
+            smartNavigation.style.display = 'block';
+            document.getElementById('features').scrollIntoView();
+            speak('Smart navigation activated. Ask for directions to any location on campus.');
+        }
+        
+        function closeSmartNavigation() {
+            smartNavigation.style.display = 'none';
+            speak('Smart navigation deactivated.');
+        }
+
+        // Web Accessibility Functions
+        function openWebAccessibility() {
+            closeAllFeatures();
+            webAccessibility.style.display = 'block';
+            document.getElementById('features').scrollIntoView();
+            speak('Web content reader activated. Enter a URL to extract and read its content.');
+        }
+        
+        function closeWebAccessibility() {
+            webAccessibility.style.display = 'none';
+            speak('Web content reader deactivated.');
+        }
+
+        // Close all features helper
+        function closeAllFeatures() {
+            closeCameraFeature();
+            closeDocumentReader();
+            closeSmartNavigation();
+            closeWebAccessibility();
+        }
+        
+        // Feature button listeners
+        document.getElementById('open-camera').addEventListener('click', openCameraFeature);
+        document.getElementById('close-camera').addEventListener('click', closeCameraFeature);
+        document.getElementById('open-doc-reader').addEventListener('click', openDocumentReader);
+        document.getElementById('close-doc-reader').addEventListener('click', closeDocumentReader);
+        document.getElementById('open-navigation').addEventListener('click', openSmartNavigation);
+        document.getElementById('close-navigation').addEventListener('click', closeSmartNavigation);
+        document.getElementById('open-web-reader').addEventListener('click', openWebAccessibility);
+        document.getElementById('close-web-reader').addEventListener('click', closeWebAccessibility);
+        
+        // Capture image simulation
+        document.getElementById('capture-image').addEventListener('click', () => {
+            const results = document.getElementById('detection-results');
+            // Simulate object detection with random results
+            const objects = ['bus stop sign', 'crosswalk signal', 'room number 101', 'exit sign', 'information desk'];
+            const detectedObject = objects[Math.floor(Math.random() * objects.length)];
+            results.textContent = `Detected: ${detectedObject}`;
+            speak(`Detected ${detectedObject}`);
+        });
+        
+        // Document reader functionality
+        const docInput = document.getElementById('document-input');
+        const docPreview = document.getElementById('document-preview');
+        const docOutput = document.getElementById('doc-text-output');
+        
+        docInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    docPreview.src = event.target.result;
+                    docPreview.style.display = 'block';
+                    docOutput.textContent = 'Document loaded. Click "Read Document" to extract text.';
+                    speak('Document loaded. Click "Read Document" or say "Read document" to extract text.');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        document.getElementById('read-document').addEventListener('click', () => {
+            // More realistic OCR simulation based on file name if available
+            let extractedText = "";
+            const fileName = docInput.files.length > 0 ? docInput.files[0].name.toLowerCase() : "";
+            
+            if (fileName.includes("syllabus") || fileName.includes("course")) {
+                extractedText = "COURSE SYLLABUS: Introduction to Computer Science. \n\nWeek 1: Introduction to Programming Concepts \nWeek 2: Variables and Data Types \nWeek 3: Control Structures and Loops \n\nOffice Hours: Monday and Wednesday, 2-4 PM in Room 302B.";
+            } else if (fileName.includes("notice") || fileName.includes("announcement")) {
+                extractedText = "IMPORTANT NOTICE: Campus will be closed on October 15th for facility maintenance. All classes will be conducted online. Please check your email for virtual meeting links from your instructors.";
+            } else if (fileName.includes("schedule") || fileName.includes("timetable")) {
+                extractedText = "SPRING SEMESTER SCHEDULE: \nMath 101: Mon/Wed/Fri 9:00-10:15 AM, Building A, Room 205 \nHistory 210: Tue/Thu 11:30 AM-1:00 PM, Building C, Room 118 \nComputer Science 150: Mon/Wed 2:00-3:45 PM, Tech Center, Lab 4";
+            } else {
+                // Generic OCR result if no specific filename pattern
+                const sampleTexts = [
+                    "Important notice: Campus library hours have been extended to 11 PM on weekdays. Weekend hours remain 10 AM to 6 PM.",
+                    "Student ID Card Notice: All students must get their ID cards updated at the administration office by October 15th.",
+                    "Course Registration: Fall semester registration begins August 1st. Please consult with your academic advisor before registering."
+                ];
+                extractedText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+            }
+            
+            docOutput.textContent = extractedText;
+            speak(extractedText);
+        });
+
+        // Smart Navigation feature
+        document.getElementById('get-directions').addEventListener('click', () => {
+            const navigationInput = document.getElementById('navigation-input');
+            const navigationResults = document.getElementById('navigation-results');
+            const query = navigationInput.value.toLowerCase();
+            
+            if (!query) {
+                speak("Please enter a destination or question about navigation.");
+                return;
+            }
+            
+            let response = "";
+            
+            // Simulated direction responses based on common campus locations
+            if (query.includes("library")) {
+                response = "Directions to the library: From the main entrance, go straight ahead for 100 meters. Turn right at the fountain and continue for 50 meters. The library will be on your left, a three-story building with glass doors.";
+            } else if (query.includes("cafeteria") || query.includes("dining hall")) {
+                response = "Directions to the cafeteria: From your current location, head east towards the student center. Enter through the main doors and take the hallway to your right. The cafeteria is at the end of the hallway, past the student lounge.";
+            } else if (query.includes("administration") || query.includes("admin office")) {
+                response = "Directions to the administration office: Go to the central quad area. The administration building is the large brick building on the north side. Enter through the front doors and the main office is on the first floor, room 120.";
+            } else if (query.includes("nearest bathroom") || query.includes("restroom")) {
+                response = "The nearest restroom is 20 meters to your right, next to the water fountain. There are accessible facilities available.";
+            } else {
+                response = "I don't have specific information about that location. Please try asking about the library, cafeteria, administration office, or restrooms.";
+            }
+            
+            navigationResults.textContent = response;
+            speak(response);
+        });
+
+        // Web Accessibility feature
+        document.getElementById('extract-content').addEventListener('click', () => {
+            const urlInput = document.getElementById('web-url-input');
+            const contentOutput = document.getElementById('web-content-output');
+            const url = urlInput.value;
+            
+            if (!url) {
+                speak("Please enter a valid URL to extract content.");
+                return;
+            }
+            
+            // Simulate web content extraction based on URL keywords
+            let extractedContent = "";
+            
+            if (url.includes("news") || url.includes("article")) {
+                extractedContent = "BREAKING NEWS: Scientists Discover New Renewable Energy Source\n\nResearchers at the National Science Institute have announced a breakthrough in sustainable energy technology. The new method converts atmospheric humidity into electricity with 40% higher efficiency than current solar panels.\n\n\"This could revolutionize how we power our cities,\" said Dr. Sarah Chen, lead researcher on the project. Early tests show promising results in both humid and dry climates.";
+            } else if (url.includes("blog") || url.includes("post")) {
+                extractedContent = "Top 5 Assistive Technologies for 2025\n\n1. Smart Glasses with AI Navigation - These lightweight glasses provide real-time audio descriptions of surroundings\n\n2. Tactile Sign Language Gloves - Convert sign language to text and speech instantly\n\n3. Neural Interface Screen Readers - Read content with customizable voices and speeds\n\n4. Adaptive Smart Home Hub - Centralized control of all home devices through voice, gesture, or breath\n\n5. Omnidirectional Sound Locator - Helps identify and navigate toward specific sounds in noisy environments";
+            } else if (url.includes("edu") || url.includes("university")) {
+                extractedContent = "UNIVERSITY ANNOUNCEMENT: New Accessibility Services Available\n\nThe Office of Student Services is pleased to announce expanded accessibility resources:\n\n• Extended testing time requests can now be submitted online\n• New adaptive technology lab opened in the West Campus Library\n• Free shuttle service available for students with mobility challenges\n• Sign language interpreters can be requested through the updated mobile app\n\nFor more information, contact accessibility@university.edu or visit the Student Services Center.";
+            } else {
+                extractedContent = "Sample website content: This is a simulation of extracted web content. In a real implementation, this would use web scraping techniques to extract the main content while filtering out navigation, ads, and other non-essential elements. The extracted content would then be presented in a clean, readable format and could be read aloud by the screen reader.";
+            }
+            
+            contentOutput.textContent = extractedContent;
+            speak(extractedContent);
+        });
+
+        // Automatically start voice control after page load (optional)
+        window.addEventListener('load', () => {
+            // Uncomment the line below to auto-start voice control
+            // startButton.click();
+            
+            // Initial welcome message
+            speak('Welcome to the Accessible Assistant. Press the Start Voice Control button or tab to it and press Enter to begin using voice commands.');
+        });
+    </script>
+</body>
+</html>
